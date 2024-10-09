@@ -21,6 +21,176 @@
         }
     </style>
 
+    <script type="text/javascript">
+        var jsBridge = window.JsBridge;
+        var player = null;
+    
+        function initVimeoPlayer(initParams){
+            var w = document.body.clientWidth;
+            var h = document.body.clientHeight;
+    
+            var options = {
+                url: initParams.url,
+                autoplay: initParams.autoplay,
+                controls: initParams.controls,
+                color: init.backgroundColor,
+                muted: false,
+                loop: false,
+                title: true,
+                quality: initParams.quality,
+                portrait: true,
+                byline: true,
+                speed: true,
+                transparent: false,
+                width: w,
+                height: h
+            };
+            player = new Vimeo.Player('player', options);
+    
+            player.on('timeupdate', function (data) {
+                jsBridge.sendVideoCurrentTime(data.seconds)
+            });
+    
+            player.on('play', function (data) {
+                jsBridge.sendPlaying(data.duration)
+            });
+    
+            player.on('pause', function (data) {
+                jsBridge.sendPaused(data.seconds)
+            });
+    
+            player.on('ended', function (data) {
+                jsBridge.sendEnded(data.duration)
+            });
+    
+            player.on('volumechange', function (data) {
+                jsBridge.sendVolumeChange(data.volume)
+            });
+    
+            player.on('texttrackchange', function (data) {
+                jsBridge.sendTextTrackChange(data.kind,data.label,data.language)
+            });
+    
+            player.on('error', function (data) {
+                jsBridge.sendError(data.message,data.method,data.name)
+            });
+    
+            player.ready().then(function () {
+                player.getDuration().then(function(duration) {
+                    player.getVideoTitle().then(function(title) {
+                        player.getTextTracks().then(function(tracks) {
+                            var tracksJSON = JSON.stringify(tracks);
+                            jsBridge.sendReady(title,duration,tracksJSON)
+                            getAllQualities()
+                        }).catch(function(error) {
+                            jsBridge.sendReady(title,duration)
+                        })
+                    }).catch(function(error) {
+                        jsBridge.sendInitFailed()
+                            jsBridge.sendError(error.message,error.method,error.name)
+                    })
+                }).catch(function(error) {
+                    jsBridge.sendInitFailed()
+                            jsBridge.sendError(error.message,error.method,error.name)
+                })
+            }).catch(function (error) {
+                jsBridge.sendInitFailed()
+                            jsBridge.sendError(error.message,error.method,error.name)
+            });
+        }
+    
+        function seekTo(startSeconds) {
+            player.setCurrentTime(startSeconds)
+        }
+    
+        function pauseVideo() {
+            player.pause()
+        }
+    
+        function playVideo() {
+            player.play()
+        }
+    
+        function loadVideo(videoId) {
+            player.loadVideo(videoId).then(function(id) {
+                player.getDuration().then(function(duration) {
+                    player.getVideoTitle().then(function(title) {
+                        jsBridge.sendReady(title,duration)
+                        getAllQualities()
+                    }).catch(function(error) {
+                        jsBridge.sendInitFailed()
+                            jsBridge.sendError(error.message,error.method,error.name)
+                    })
+                }).catch(function(error) {
+                    jsBridge.sendInitFailed()
+                    jsBridge.sendError(error.message,error.method,error.name)
+                })
+            })
+        }
+    
+        function setVolume(volumePercent) {
+            player.setVolume(volumePercent)
+        }
+    
+        function destroyPlayer() {
+            player.destroy()
+        }
+    
+        function setColor(hexColor) {
+            player.setColor(hexColor)
+        }
+    
+        function setLoop(loop) {
+            player.setLoop(loop)
+        }
+    
+        function setPlaybackRate(playbackRate) {
+            player.setPlaybackRate(playbackRate)
+        }
+    
+        function playTwoStage() {
+            player.play().then(function() {
+                player.pause().then(function() {
+                    player.play()
+                }).catch(function(error) {
+                    jsBridge.sendError(data.message,data.method,data.name)
+                })
+            }).catch(function(error) {
+                jsBridge.sendError(data.message,data.method,data.name)
+            })
+        }
+    
+        function setCaptions(language) {
+            player.enableTextTrack(language).then(function(track) {
+                track.language = language
+                track.kind = 'captions'
+            }).catch(function(error) {
+                jsBridge.sendError(error.name,error.name,error.name)
+            })
+        }
+    
+        function disableCaptions() {
+            player.disableTextTrack()
+        }
+    
+        function getAllQualities() {
+            player.getQualities().then(function(qualities) {
+                jsBridge.getAllQualities(JSON.stringify(qualities))
+            }).catch(function(error) {
+    
+            });
+        }
+    
+        function setQuality(playbackQuality) {
+            player.setQuality(playbackQuality).then(function(quality) {
+                jsBridge.sendError(""+quality,"qualities","qualities")
+             }).catch(function(error) {
+                jsBridge.sendError(error.name,error.name,error.name)
+            });
+        }
+    </script>
+
+
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
@@ -32,177 +202,4 @@
             <div id="player"></div>
         </div>
     </body>
-
-
-
-    <script type="text/javascript">
-    var jsBridge = window.JsBridge;
-    var player = null;
-
-    function initVimeoPlayer(initParams){
-        var w = document.body.clientWidth;
-        var h = document.body.clientHeight;
-
-        var options = {
-            url: initParams.url,
-            autoplay: initParams.autoplay,
-            controls: initParams.controls,
-            color: init.backgroundColor,
-            background-color: init.backgroundColor,
-            muted: false,
-            loop: false,
-            title: true,
-            quality: initParams.quality,
-            portrait: true,
-            byline: true,
-            speed: true,
-            transparent: false,
-            width: w,
-            height: h
-        };
-        player = new Vimeo.Player('player', options);
-
-        player.on('timeupdate', function (data) {
-            jsBridge.sendVideoCurrentTime(data.seconds)
-        });
-
-        player.on('play', function (data) {
-            jsBridge.sendPlaying(data.duration)
-        });
-
-        player.on('pause', function (data) {
-            jsBridge.sendPaused(data.seconds)
-        });
-
-        player.on('ended', function (data) {
-            jsBridge.sendEnded(data.duration)
-        });
-
-        player.on('volumechange', function (data) {
-            jsBridge.sendVolumeChange(data.volume)
-        });
-
-        player.on('texttrackchange', function (data) {
-            jsBridge.sendTextTrackChange(data.kind,data.label,data.language)
-        });
-
-        player.on('error', function (data) {
-            jsBridge.sendError(data.message,data.method,data.name)
-        });
-
-        player.ready().then(function () {
-            player.getDuration().then(function(duration) {
-                player.getVideoTitle().then(function(title) {
-                    player.getTextTracks().then(function(tracks) {
-                        var tracksJSON = JSON.stringify(tracks);
-                        jsBridge.sendReady(title,duration,tracksJSON)
-                        getAllQualities()
-                    }).catch(function(error) {
-                        jsBridge.sendReady(title,duration)
-                    })
-                }).catch(function(error) {
-                    jsBridge.sendInitFailed()
-                        jsBridge.sendError(error.message,error.method,error.name)
-                })
-            }).catch(function(error) {
-                jsBridge.sendInitFailed()
-                        jsBridge.sendError(error.message,error.method,error.name)
-            })
-        }).catch(function (error) {
-            jsBridge.sendInitFailed()
-                        jsBridge.sendError(error.message,error.method,error.name)
-        });
-    }
-
-    function seekTo(startSeconds) {
-        player.setCurrentTime(startSeconds)
-    }
-
-    function pauseVideo() {
-        player.pause()
-    }
-
-    function playVideo() {
-        player.play()
-    }
-
-    function loadVideo(videoId) {
-        player.loadVideo(videoId).then(function(id) {
-            player.getDuration().then(function(duration) {
-                player.getVideoTitle().then(function(title) {
-                    jsBridge.sendReady(title,duration)
-                    getAllQualities()
-                }).catch(function(error) {
-                    jsBridge.sendInitFailed()
-                        jsBridge.sendError(error.message,error.method,error.name)
-                })
-            }).catch(function(error) {
-                jsBridge.sendInitFailed()
-                jsBridge.sendError(error.message,error.method,error.name)
-            })
-        })
-    }
-
-    function setVolume(volumePercent) {
-        player.setVolume(volumePercent)
-    }
-
-    function destroyPlayer() {
-        player.destroy()
-    }
-
-    function setColor(hexColor) {
-        player.setColor(hexColor)
-    }
-
-    function setLoop(loop) {
-        player.setLoop(loop)
-    }
-
-    function setPlaybackRate(playbackRate) {
-        player.setPlaybackRate(playbackRate)
-    }
-
-    function playTwoStage() {
-        player.play().then(function() {
-            player.pause().then(function() {
-                player.play()
-            }).catch(function(error) {
-                jsBridge.sendError(data.message,data.method,data.name)
-            })
-        }).catch(function(error) {
-            jsBridge.sendError(data.message,data.method,data.name)
-        })
-    }
-
-    function setCaptions(language) {
-        player.enableTextTrack(language).then(function(track) {
-            track.language = language
-            track.kind = 'captions'
-        }).catch(function(error) {
-            jsBridge.sendError(error.name,error.name,error.name)
-        })
-    }
-
-    function disableCaptions() {
-        player.disableTextTrack()
-    }
-
-    function getAllQualities() {
-        player.getQualities().then(function(qualities) {
-            jsBridge.getAllQualities(JSON.stringify(qualities))
-        }).catch(function(error) {
-
-        });
-    }
-
-    function setQuality(playbackQuality) {
-        player.setQuality(playbackQuality).then(function(quality) {
-            jsBridge.sendError(""+quality,"qualities","qualities")
-         }).catch(function(error) {
-            jsBridge.sendError(error.name,error.name,error.name)
-        });
-    }
-    </script>
-
 </html>
